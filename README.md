@@ -1,2 +1,6 @@
 # NLP
 Natural Language Processing With Deep Learning
+
+Abstract-- I introduce a novel approach to sentiment analysis on social messages. These messages are classified as positive or bad based on how they relate to a certain query word. This method is useful not only for firms trying to monitor public opinion about their brands but also for customers who want to research product sentiment before making a purchase. I report on our experience classifying Twitter messages' sentiment using machine learning algorithms under distant supervision. I use emoticons as noisy labels in Twitter messages, which make up our training data. This kind of information is widely available and can be gathered automatically. I show that when trained on deep learning algorithms— CNN, achieve accuracy 87% and rest of the models RNNs, LSTMs, and Transformers show identical performance, indicating they may not be well-tuned or suitable for this particular problem.
+The results indicate that CNNs are the most effective model for this task, balancing both precision and recall to achieve high accuracy and F1-score. RNNs, LSTMs, and Transformers require further tuning or may not be the best choice for this specific application.
+
