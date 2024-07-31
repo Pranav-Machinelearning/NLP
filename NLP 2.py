@@ -3,13 +3,13 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+from nltk.stem import WordNetLemmatizer
+import matplotlib.pyplot as plt
 from sklearn.utils import resample
 import tensorflow as tf
 from tensorflow.keras import layers, models
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 import seaborn as sns
-import matplotlib.pyplot as plt
-from nltk.stem import WordNetLemmatizer
 
 # Load data
 semantic_data = pd.read_csv(r"C:\Users\prana\OneDrive\Documents\Dataset\Semantic analysis.csv", names=["ID", "Hashtags", "Message status", "Twitter Messages"])
@@ -57,17 +57,17 @@ def preprocesstweet(textdata):
     seqReplacePattern = r"\1\1"
     
     for tweet in textdata:
-        tweet = tweet.lower()
-        tweet = re.sub(urlPattern,' URL',tweet)
-        for emoji in emojis.keys():
-            tweet = tweet.replace(emoji, "EMOJI" + emojis[emoji])        
-        tweet = re.sub(userPattern,' USER', tweet)        
-        tweet = re.sub(alphaPattern, " ", tweet)
-        tweet = re.sub(sequencePattern, seqReplacePattern, tweet)
+#         tweet = tweet.lower()
+#         tweet = re.sub(urlPattern,' URL',tweet)
+#         for emoji in emojis.keys():
+#             tweet = tweet.replace(emoji, "EMOJI" + emojis[emoji])        
+#         tweet = re.sub(userPattern,' USER', tweet)        
+#         tweet = re.sub(alphaPattern, " ", tweet)
+#         tweet = re.sub(sequencePattern, seqReplacePattern, tweet)
 
         tweetwords = ''
         for word in tweet.split():
-            if len(word) > 1:
+            if word not in stopwordlist and len(word) > 1:
                 word = wordLemm.lemmatize(word)
                 tweetwords += (word+' ')
             
@@ -85,6 +85,16 @@ tfidf_features = tfidf_vectorizer.fit_transform(tweettext).toarray()
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(tfidf_features, overspl['Message status'], test_size=0.2, random_state=42)
 
+# Function to evaluate and collect metrics for each model
+def evaluate_model(model, X_test, y_test):
+    y_pred = (model.predict(X_test) > 0.5).astype("int32")
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred)
+    return accuracy, precision, recall, f1, cm
+
 # CNN Model
 cnn_model = models.Sequential([
     layers.Reshape((1000, 1), input_shape=(1000,)),  # Reshape to add a single channel
@@ -99,26 +109,7 @@ cnn_model = models.Sequential([
 
 cnn_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 cnn_model.fit(X_train, y_train, epochs=5, batch_size=64, validation_split=0.2)
-cnn_loss, cnn_acc = cnn_model.evaluate(X_test, y_test)
-print(f"CNN Test Accuracy: {cnn_acc}")
-
-# Calculate Confusion Matrix for CNN
-cnn_predictions = cnn_model.predict(X_test)
-cnn_predictions = (cnn_predictions > 0.5).astype(int).flatten()
-cnn_cm = confusion_matrix(y_test, cnn_predictions)
-print("CNN Confusion Matrix:")
-print(cnn_cm)
-sns.heatmap(cnn_cm, annot=True, fmt='d', cmap='Blues')
-plt.title('CNN Confusion Matrix')
-plt.show()
-
-# Calculate Precision, Recall, and F1 Score for CNN
-cnn_precision = precision_score(y_test, cnn_predictions)
-cnn_recall = recall_score(y_test, cnn_predictions)
-cnn_f1 = f1_score(y_test, cnn_predictions)
-print(f"CNN Precision: {cnn_precision}")
-print(f"CNN Recall: {cnn_recall}")
-print(f"CNN F1 Score: {cnn_f1}")
+cnn_metrics = evaluate_model(cnn_model, X_test, y_test)
 
 # RNN Model
 rnn_model = models.Sequential([
@@ -129,26 +120,7 @@ rnn_model = models.Sequential([
 
 rnn_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 rnn_model.fit(X_train, y_train, epochs=5, batch_size=64, validation_split=0.2)
-rnn_loss, rnn_acc = rnn_model.evaluate(X_test, y_test)
-print(f"RNN Test Accuracy: {rnn_acc}")
-
-# Calculate Confusion Matrix for RNN
-rnn_predictions = rnn_model.predict(X_test)
-rnn_predictions = (rnn_predictions > 0.5).astype(int).flatten()
-rnn_cm = confusion_matrix(y_test, rnn_predictions)
-print("RNN Confusion Matrix:")
-print(rnn_cm)
-sns.heatmap(rnn_cm, annot=True, fmt='d', cmap='Blues')
-plt.title('RNN Confusion Matrix')
-plt.show()
-
-# Calculate Precision, Recall, and F1 Score for RNN
-rnn_precision = precision_score(y_test, rnn_predictions)
-rnn_recall = recall_score(y_test, rnn_predictions)
-rnn_f1 = f1_score(y_test, rnn_predictions)
-print(f"RNN Precision: {rnn_precision}")
-print(f"RNN Recall: {rnn_recall}")
-print(f"RNN F1 Score: {rnn_f1}")
+rnn_metrics = evaluate_model(rnn_model, X_test, y_test)
 
 # LSTM Model
 lstm_model = models.Sequential([
@@ -159,30 +131,9 @@ lstm_model = models.Sequential([
 
 lstm_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 lstm_model.fit(X_train, y_train, epochs=5, batch_size=64, validation_split=0.2)
-lstm_loss, lstm_acc = lstm_model.evaluate(X_test, y_test)
-print(f"LSTM Test Accuracy: {lstm_acc}")
-
-# Calculate Confusion Matrix for LSTM
-lstm_predictions = lstm_model.predict(X_test)
-lstm_predictions = (lstm_predictions > 0.5).astype(int).flatten()
-lstm_cm = confusion_matrix(y_test, lstm_predictions)
-print("LSTM Confusion Matrix:")
-print(lstm_cm)
-sns.heatmap(lstm_cm, annot=True, fmt='d', cmap='Blues')
-plt.title('LSTM Confusion Matrix')
-plt.show()
-
-# Calculate Precision, Recall, and F1 Score for LSTM
-lstm_precision = precision_score(y_test, lstm_predictions)
-lstm_recall = recall_score(y_test, lstm_predictions)
-lstm_f1 = f1_score(y_test, lstm_predictions)
-print(f"LSTM Precision: {lstm_precision}")
-print(f"LSTM Recall: {lstm_recall}")
-print(f"LSTM F1 Score: {lstm_f1}")
+lstm_metrics = evaluate_model(lstm_model, X_test, y_test)
 
 # Transformer Model
-from tensorflow.keras.layers import TextVectorization
-
 def transformer_encoder(inputs, head_size, num_heads, ff_dim, dropout=0):
     x = layers.LayerNormalization(epsilon=1e-6)(inputs)
     x = layers.MultiHeadAttention(key_dim=head_size, num_heads=num_heads, dropout=dropout)(x, x)
@@ -207,23 +158,42 @@ outputs = layers.Dense(1, activation="sigmoid")(x)
 transformer_model = models.Model(inputs, outputs)
 transformer_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 transformer_model.fit(X_train, y_train, epochs=5, batch_size=64, validation_split=0.2)
-transformer_loss, transformer_acc = transformer_model.evaluate(X_test, y_test)
-print(f"Transformer Test Accuracy: {transformer_acc}")
+transformer_metrics = evaluate_model(transformer_model, X_test, y_test)
 
-# Calculate Confusion Matrix for Transformer
-transformer_predictions = transformer_model.predict(X_test)
-transformer_predictions = (transformer_predictions > 0.5).astype(int).flatten()
-transformer_cm = confusion_matrix(y_test, transformer_predictions)
-print("Transformer Confusion Matrix:")
-print(transformer_cm)
-sns.heatmap(transformer_cm, annot=True, fmt='d', cmap='Blues')
-plt.title('Transformer Confusion Matrix')
+# Compare Metrics
+models_metrics = {
+    'Model': ['CNN', 'RNN', 'LSTM', 'Transformer'],
+    'Accuracy': [cnn_metrics[0], rnn_metrics[0], lstm_metrics[0], transformer_metrics[0]],
+    'Precision': [cnn_metrics[1], rnn_metrics[1], lstm_metrics[1], transformer_metrics[1]],
+    'Recall': [cnn_metrics[2], rnn_metrics[2], lstm_metrics[2], transformer_metrics[2]],
+    'F1 Score': [cnn_metrics[3], rnn_metrics[3], lstm_metrics[3], transformer_metrics[3]]
+}
+
+metrics_df = pd.DataFrame(models_metrics)
+
+# Plotting
+plt.figure(figsize=(12, 8))
+metrics_df.set_index('Model').plot(kind='bar')
+plt.title('Comparison of Model Performance Metrics')
+plt.xlabel('Model')
+plt.ylabel('Score')
+plt.ylim(0, 1)
+plt.legend(loc='best')
 plt.show()
 
-# Calculate Precision, Recall, and F1 Score for Transformer
-transformer_precision = precision_score(y_test, transformer_predictions)
-transformer_recall = recall_score(y_test, transformer_predictions)
-transformer_f1 = f1_score(y_test, transformer_predictions)
-print(f"Transformer Precision: {transformer_precision}")
-print(f"Transformer Recall: {transformer_recall}")
-print(f"Transformer F1 Score: {transformer_f1}")
+# Display Confusion Matrices
+fig, axs = plt.subplots(2, 2, figsize=(12, 12))
+
+sns.heatmap(cnn_metrics[4], annot=True, fmt='d', cmap='Blues', ax=axs[0, 0])
+axs[0, 0].set_title('CNN Confusion Matrix')
+
+sns.heatmap(rnn_metrics[4], annot=True, fmt='d', cmap='Blues', ax=axs[0, 1])
+axs[0, 1].set_title('RNN Confusion Matrix')
+
+sns.heatmap(lstm_metrics[4], annot=True, fmt='d', cmap='Blues', ax=axs[1, 0])
+axs[1, 0].set_title('LSTM Confusion Matrix')
+
+sns.heatmap(transformer_metrics[4], annot=True, fmt='d', cmap='Blues', ax=axs[1, 1])
+axs[1, 1].set_title('Transformer Confusion Matrix')
+
+plt.show()
